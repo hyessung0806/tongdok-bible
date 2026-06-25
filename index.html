@@ -637,7 +637,7 @@ function markWritten(){
 /* 캔버스 드로잉 엔진 — 스트로크는 메모리에만, 저장하지 않음(완료 도장만) */
 const canvasEl=()=>$("#writeCanvas");
 const raf=f=>(typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16));
-let wctx=null,strokes=[],curStroke=null,eraseMode=false,erasing=false,fingerDraw=false,penSeen=false,wRect=null,wDPR=1;
+let wctx=null,strokes=[],curStroke=null,eraseMode=false,erasing=false,fingerDraw=false,penSeen=false,wRect=null,wDPR=1,lastPointerType="";
 const PEN_W=2.3,FN_W=2.7,ERASE_R=15; // 펜=일정 굵기 / 만년필=필압 가변 / ERASE_R=획 지우개 반경(px)
 function sizeCanvas(){
   const c=canvasEl();if(!c)return;wctx=(c.getContext&&c.getContext("2d"))||null;
@@ -689,6 +689,7 @@ function updateEraseCursor(e){const cur=$("#eraseCursor");if(!cur)return;
   cur.style.left=(e.clientX-r.left)+"px";cur.style.top=(e.clientY-r.top)+"px";cur.style.display="block"}
 function hideEraseCursor(){const cur=$("#eraseCursor");if(cur)cur.style.display="none"}
 function onDown(e){
+  lastPointerType=e.pointerType;
   if(!wDrawReady)sizeCanvas();
   if(!canDraw(e))return;
   e.preventDefault();try{canvasEl().setPointerCapture(e.pointerId)}catch(_){}
@@ -697,6 +698,7 @@ function onDown(e){
   erasing=false;curStroke={pts:[pt]};
 }
 function onMove(e){
+  lastPointerType=e.pointerType;
   updateEraseCursor(e);
   if(erasing){e.preventDefault();const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
     for(const ev of evs){const pt=ptFrom(ev);eraseAt(pt.x,pt.y)}return}
@@ -715,8 +717,9 @@ function onUp(){
 }
 function undoStroke(){strokes.pop();redraw()}
 function clearCanvas(){strokes=[];curStroke=null;redraw()}
-function toggleEraser(){eraseMode=!eraseMode;$("#wEraser").classList.toggle("on",eraseMode);
-  if(!eraseMode)hideEraseCursor();else toast("지우개 — 획에 닿으면 통째로 지워져요")}
+function toggleEraser(fromPen){eraseMode=!eraseMode;$("#wEraser").classList.toggle("on",eraseMode);
+  if(!eraseMode)hideEraseCursor();
+  toast((fromPen?"S펜 버튼 → ":"")+(eraseMode?"지우개 — 획에 닿으면 통째로 지워져요":"펜으로 전환했어요"))}
 function applyPenStyle(){const f=state.settings.penStyle==="fountain";
   $("#penTglText").textContent=f?"✒️ 만년필":"🖊️ 펜";$("#penTgl").classList.toggle("fountain",f)}
 function cyclePenStyle(){state.settings.penStyle=(state.settings.penStyle==="fountain")?"pen":"fountain";
@@ -803,7 +806,7 @@ $("#traceTgl").onclick=toggleTrace;
 $("#penTgl").onclick=cyclePenStyle;
 $("#writePrev").onclick=()=>pageGo(wPageIdx-1);
 $("#writeNext").onclick=()=>pageGo(wPageIdx+1);
-$("#wEraser").onclick=toggleEraser;
+$("#wEraser").onclick=()=>toggleEraser(false);
 $("#wUndo").onclick=undoStroke;
 $("#wClear").onclick=clearCanvas;
 $("#wFinger").onclick=toggleFinger;
@@ -821,7 +824,8 @@ $("#wDone").onclick=markWritten;
   const area=$("#writeArea");
   c.addEventListener("touchmove",noScroll,{passive:false});
   if(area)area.addEventListener("touchmove",noScroll,{passive:false});
-  c.addEventListener("contextmenu",e=>e.preventDefault()); // S펜 버튼 컨텍스트메뉴 방지
+  // S펜 버튼이 contextmenu로 들어오면(팝업은 막고) 지우개 모드 토글 — 펜이고 그리는 중이 아닐 때만(손가락/필기 오작동 방지)
+  c.addEventListener("contextmenu",e=>{e.preventDefault();if(lastPointerType==="pen"&&!curStroke)toggleEraser(true)});
   let rt;window.addEventListener("resize",()=>{clearTimeout(rt);
     rt=setTimeout(()=>{if(!document.body.classList.contains("mode-write"))return;
       const a=$("#writeArea");const w=(a&&a.clientWidth)||0;
