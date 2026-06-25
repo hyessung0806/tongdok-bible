@@ -154,6 +154,8 @@ body:not(.mode-read) .donebar{display:none}
 .guide sup{font-size:.5em;font-weight:800;vertical-align:.5em;margin:0 2px 0 1px;opacity:.85}
 .writearea.blank .guide{display:none}
 #writeCanvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.erasecursor{position:absolute;border:2px solid rgba(192,57,43,.75);background:rgba(192,57,43,.09);
+  border-radius:50%;pointer-events:none;display:none;transform:translate(-50%,-50%);z-index:4}
 .writehint{text-align:center;color:var(--muted);font-size:.78rem;margin:9px 0 0;line-height:1.7}
 .fingertgl{font-size:.78rem;font-weight:700;color:var(--accent);border:1px solid var(--line2);border-radius:999px;
   padding:3px 10px;background:var(--panel);white-space:nowrap}
@@ -282,6 +284,7 @@ textarea{width:100%;min-height:84px;border:1.5px solid var(--line2);border-radiu
     <div class="writearea trace" id="writeArea">
       <div class="guide" id="writeGuide"></div>
       <canvas id="writeCanvas"></canvas>
+      <div class="erasecursor" id="eraseCursor"></div>
     </div>
     <p class="writehint"><span id="writeHint">펜으로 흐린 글씨를 따라 써보세요 · 손가락으로 화면을 올리면 스크롤돼요</span>
       &nbsp;·&nbsp;<button class="fingertgl" id="wFinger">✋ 손가락으로 쓰기</button></p>
@@ -666,7 +669,8 @@ function canDraw(e){
   if(e.pointerType==="touch")return fingerDraw; // 손가락은 토글 ON일 때만(기본=펜, 팜 리젝션)
   return false}
 // S펜 버튼(barrel)·펜 지우개끝 → 지우개로 인식 (애플펜슬 더블탭은 웹 미지원)
-function penEraserSignal(e){const b=e.buttons||0;return e.pointerType==="pen"&&((b&32)||(b&2)||e.button===5)}
+function penEraserSignal(e){const b=e.buttons||0;return e.pointerType==="pen"&&((b&32)||(b&2)||e.button===5||e.button===2)}
+function wantErase(e){return eraseMode||penEraserSignal(e)}
 // 점→선분 거리(획 지우개 히트 테스트)
 function distToSeg(px,py,a,b){const dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy;
   if(!l2)return Math.hypot(px-a.x,py-a.y);
@@ -678,30 +682,40 @@ function eraseAt(x,y){const r=ERASE_R;let changed=false;
     else for(let j=1;j<pts.length;j++)if(distToSeg(x,y,pts[j-1],pts[j])<=r){hit=true;break}
     if(hit){strokes.splice(i,1);changed=true}}
   if(changed)redraw();return changed}
+// 지우개 크기 표시 원(펜이 hover/그릴 때 따라다님)
+function updateEraseCursor(e){const cur=$("#eraseCursor");if(!cur)return;
+  if(!wantErase(e)||e.pointerType==="touch"){cur.style.display="none";return}
+  const r=wRect||canvasEl().getBoundingClientRect();
+  cur.style.left=(e.clientX-r.left)+"px";cur.style.top=(e.clientY-r.top)+"px";cur.style.display="block"}
+function hideEraseCursor(){const cur=$("#eraseCursor");if(cur)cur.style.display="none"}
 function onDown(e){
   if(!wDrawReady)sizeCanvas();
   if(!canDraw(e))return;
   e.preventDefault();try{canvasEl().setPointerCapture(e.pointerId)}catch(_){}
   wRect=canvasEl().getBoundingClientRect();const pt=ptFrom(e);
-  if(eraseMode||penEraserSignal(e)){erasing=true;curStroke=null;eraseAt(pt.x,pt.y);return}
+  if(wantErase(e)){erasing=true;curStroke=null;eraseAt(pt.x,pt.y);updateEraseCursor(e);return}
   erasing=false;curStroke={pts:[pt]};
 }
 function onMove(e){
+  updateEraseCursor(e);
   if(erasing){e.preventDefault();const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
     for(const ev of evs){const pt=ptFrom(ev);eraseAt(pt.x,pt.y)}return}
+  if(curStroke&&penEraserSignal(e)){ // 그리는 도중 펜 버튼 누르면 지우개로 전환
+    curStroke=null;erasing=true;e.preventDefault();const pt=ptFrom(e);eraseAt(pt.x,pt.y);return}
   if(!curStroke)return;e.preventDefault();
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
   for(const ev of evs){const pt=ptFrom(ev);const last=curStroke.pts[curStroke.pts.length-1];
     curStroke.pts.push(pt);drawSeg(last,pt)}
 }
 function onUp(){
-  if(erasing){erasing=false;return}
+  if(erasing){erasing=false;if(!eraseMode)hideEraseCursor();return}
   if(!curStroke)return;
   strokes.push(curStroke);curStroke=null;
 }
 function undoStroke(){strokes.pop();redraw()}
 function clearCanvas(){strokes=[];curStroke=null;redraw()}
-function toggleEraser(){eraseMode=!eraseMode;$("#wEraser").classList.toggle("on",eraseMode)}
+function toggleEraser(){eraseMode=!eraseMode;$("#wEraser").classList.toggle("on",eraseMode);
+  if(!eraseMode)hideEraseCursor();else toast("지우개 — 획에 닿으면 통째로 지워져요")}
 function applyPenStyle(){const f=state.settings.penStyle==="fountain";
   $("#penTglText").textContent=f?"✒️ 만년필":"🖊️ 펜";$("#penTgl").classList.toggle("fountain",f)}
 function cyclePenStyle(){state.settings.penStyle=(state.settings.penStyle==="fountain")?"pen":"fountain";
@@ -797,6 +811,9 @@ $("#wDone").onclick=markWritten;
   c.addEventListener("pointerdown",onDown,{passive:false});
   c.addEventListener("pointermove",onMove,{passive:false});
   c.addEventListener("pointerup",onUp);c.addEventListener("pointercancel",onUp);
+  const ec=$("#eraseCursor");if(ec)ec.style.width=ec.style.height=(2*ERASE_R)+"px"; // 지우개 원 크기=실제 반경
+  c.addEventListener("pointerenter",()=>{wRect=canvasEl().getBoundingClientRect()});
+  c.addEventListener("pointerleave",hideEraseCursor);
   // iOS: 펜·손바닥이 닿아도 화면이 스크롤되지 않도록(touch-action:none 보강) — 그리는 손가락 입력은 포인터 이벤트라 그대로 동작
   const noScroll=e=>{e.preventDefault()};
   const area=$("#writeArea");
