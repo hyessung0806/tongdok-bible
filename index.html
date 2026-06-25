@@ -122,14 +122,17 @@ body.mode-settings #view-settings{display:block}
 body:not(.mode-read) .donebar{display:none}
 
 /* 필사(손글씨) 화면 */
-.writebar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;margin:-2px 0 8px;padding:6px 0}
+.writebar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:8px;margin:-2px 0 8px;padding:6px 0;flex-wrap:wrap;row-gap:6px}
 .writebar .wlab{font-weight:800;color:var(--gold);font-size:1.02rem}
 .writebar .sp{flex:1}
 .tracetgl{display:flex;align-items:center;gap:7px;border:1.5px solid var(--line2);background:var(--panel);
-  border-radius:999px;padding:8px 14px;font-weight:700;font-size:.86rem;color:var(--muted)}
+  border-radius:999px;padding:8px 13px;font-weight:700;font-size:.86rem;color:var(--muted)}
 .tracetgl.on{background:var(--read-bg);border-color:var(--read);color:var(--gold)}
 .tracetgl .dot{width:9px;height:9px;border-radius:50%;background:var(--line2)}
 .tracetgl.on .dot{background:var(--gold)}
+.penpick{border:1.5px solid var(--line2);background:var(--panel);border-radius:999px;padding:8px 13px;
+  font-weight:800;font-size:.86rem;color:var(--gold);white-space:nowrap}
+.penpick.fountain{background:var(--read-bg);border-color:var(--read)}
 .writepager{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 10px}
 .writepager button{width:46px;height:46px;border-radius:12px;border:1.5px solid var(--line2);background:var(--panel);
   font-size:1.3rem;display:grid;place-items:center}
@@ -267,6 +270,7 @@ textarea{width:100%;min-height:84px;border:1.5px solid var(--line2);border-radiu
       <button class="iconbtn" id="writeBack" title="읽기로 돌아가기">←</button>
       <div class="wlab" id="writeLab">필사</div>
       <div class="sp"></div>
+      <button class="penpick" id="penTgl"><span id="penTglText">🖊️ 펜</span></button>
       <button class="tracetgl on" id="traceTgl"><span class="dot"></span><span id="traceTglText">따라쓰기</span></button>
     </div>
     <div class="writepager">
@@ -377,6 +381,7 @@ function loadState(){let s;try{s=JSON.parse(Store.get(KEY))}catch(e){}
   if(!s.settings)s.settings={fontScale:1};
   if(typeof s.settings.fontScale!=="number")s.settings.fontScale=1;
   if(typeof s.settings.traceGuide!=="boolean")s.settings.traceGuide=true;
+  if(s.settings.penStyle!=="pen"&&s.settings.penStyle!=="fountain")s.settings.penStyle="pen";
   if(!s.progress)s.progress=blankProgress();
   for(const n of PLANS){if(!s.progress[String(n)])s.progress[String(n)]={read:{},startedAt:""};
     if(!s.progress[String(n)].read)s.progress[String(n)].read={}}
@@ -594,7 +599,7 @@ function loadWritePage(){
   const wd=$("#wDone");wd.textContent=allDone?"✓ 필사함 · 다음 쪽 →":"✍️ 필사 완료";wd.classList.toggle("done",allDone);
   $("#writePrev").disabled=(wPageIdx<=0);
   $("#writeNext").disabled=(wPageIdx>=wPages.length-1);
-  applyTraceMode();clearStrokes();raf(sizeCanvas);
+  applyTraceMode();applyPenStyle();clearStrokes();raf(sizeCanvas);
 }
 function applyTraceMode(){
   const on=state.settings.traceGuide!==false;
@@ -629,8 +634,8 @@ function markWritten(){
 /* 캔버스 드로잉 엔진 — 스트로크는 메모리에만, 저장하지 않음(완료 도장만) */
 const canvasEl=()=>$("#writeCanvas");
 const raf=f=>(typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16));
-let wctx=null,strokes=[],curStroke=null,eraseMode=false,fingerDraw=false,penSeen=false,wRect=null,wDPR=1;
-const PEN_W=2.3,ERASE_W=26; // 일정한 굵기의 펜(붓펜처럼 압력에 따라 크게 변하지 않게)
+let wctx=null,strokes=[],curStroke=null,eraseMode=false,erasing=false,fingerDraw=false,penSeen=false,wRect=null,wDPR=1;
+const PEN_W=2.3,FN_W=2.7,ERASE_R=15; // 펜=일정 굵기 / 만년필=필압 가변 / ERASE_R=획 지우개 반경(px)
 function sizeCanvas(){
   const c=canvasEl();if(!c)return;wctx=(c.getContext&&c.getContext("2d"))||null;
   if(!wctx){wDrawReady=false;return}
@@ -643,12 +648,14 @@ function redraw(){if(!wctx)return;const c=canvasEl();
   wctx.save();wctx.setTransform(1,0,0,1,0,0);wctx.clearRect(0,0,c.width,c.height);wctx.restore();
   for(const s of strokes)drawStroke(s);if(curStroke)drawStroke(curStroke)}
 function clearStrokes(){strokes=[];curStroke=null;if(wctx)redraw()}
-function drawStroke(s){for(let i=1;i<s.pts.length;i++)drawSeg(s.pts[i-1],s.pts[i],s.erase)}
-function drawSeg(a,b,erase){if(!wctx)return;
-  wctx.globalCompositeOperation=erase?"destination-out":"source-over";
+function drawStroke(s){if(s.pts.length===1){const a=s.pts[0];drawSeg(a,{x:a.x+0.6,y:a.y+0.6,p:a.p});return}
+  for(let i=1;i<s.pts.length;i++)drawSeg(s.pts[i-1],s.pts[i])}
+function drawSeg(a,b){if(!wctx)return;
+  wctx.globalCompositeOperation="source-over";
   wctx.strokeStyle="#1f2730";wctx.lineCap="round";wctx.lineJoin="round";
-  // 펜: 거의 일정한 굵기(압력은 미세하게만 반영 0.9~1.1배)
-  const p=(a.p+b.p)/2;wctx.lineWidth=erase?ERASE_W:PEN_W*(0.9+0.2*p);
+  const p=(a.p+b.p)/2;
+  // 펜=거의 일정(0.9~1.1배) / 만년필=필압에 따라 가늘게~굵게(0.35~1.9배)
+  wctx.lineWidth=(state.settings.penStyle==="fountain")?FN_W*(0.35+1.55*p):PEN_W*(0.9+0.2*p);
   wctx.beginPath();wctx.moveTo(a.x,a.y);wctx.lineTo(b.x,b.y);wctx.stroke()}
 function ptFrom(e){const r=wRect||canvasEl().getBoundingClientRect();
   let p=e.pressure;if(!p||e.pointerType!=="pen")p=0.5;
@@ -658,26 +665,47 @@ function canDraw(e){
   if(e.pointerType==="mouse")return true;
   if(e.pointerType==="touch")return fingerDraw; // 손가락은 토글 ON일 때만(기본=펜, 팜 리젝션)
   return false}
+// S펜 버튼(barrel)·펜 지우개끝 → 지우개로 인식 (애플펜슬 더블탭은 웹 미지원)
+function penEraserSignal(e){const b=e.buttons||0;return e.pointerType==="pen"&&((b&32)||(b&2)||e.button===5)}
+// 점→선분 거리(획 지우개 히트 테스트)
+function distToSeg(px,py,a,b){const dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy;
+  if(!l2)return Math.hypot(px-a.x,py-a.y);
+  let t=((px-a.x)*dx+(py-a.y)*dy)/l2;t=t<0?0:t>1?1:t;
+  return Math.hypot(px-(a.x+t*dx),py-(a.y+t*dy))}
+function eraseAt(x,y){const r=ERASE_R;let changed=false;
+  for(let i=strokes.length-1;i>=0;i--){const pts=strokes[i].pts;let hit=false;
+    if(pts.length===1)hit=Math.hypot(x-pts[0].x,y-pts[0].y)<=r+PEN_W;
+    else for(let j=1;j<pts.length;j++)if(distToSeg(x,y,pts[j-1],pts[j])<=r){hit=true;break}
+    if(hit){strokes.splice(i,1);changed=true}}
+  if(changed)redraw();return changed}
 function onDown(e){
   if(!wDrawReady)sizeCanvas();
   if(!canDraw(e))return;
   e.preventDefault();try{canvasEl().setPointerCapture(e.pointerId)}catch(_){}
-  wRect=canvasEl().getBoundingClientRect();curStroke={erase:eraseMode,pts:[ptFrom(e)]};
+  wRect=canvasEl().getBoundingClientRect();const pt=ptFrom(e);
+  if(eraseMode||penEraserSignal(e)){erasing=true;curStroke=null;eraseAt(pt.x,pt.y);return}
+  erasing=false;curStroke={pts:[pt]};
 }
 function onMove(e){
+  if(erasing){e.preventDefault();const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+    for(const ev of evs){const pt=ptFrom(ev);eraseAt(pt.x,pt.y)}return}
   if(!curStroke)return;e.preventDefault();
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
   for(const ev of evs){const pt=ptFrom(ev);const last=curStroke.pts[curStroke.pts.length-1];
-    curStroke.pts.push(pt);drawSeg(last,pt,curStroke.erase)}
+    curStroke.pts.push(pt);drawSeg(last,pt)}
 }
 function onUp(){
+  if(erasing){erasing=false;return}
   if(!curStroke)return;
-  if(curStroke.pts.length===1){const a=curStroke.pts[0];drawSeg(a,{x:a.x+0.6,y:a.y+0.6,p:a.p},curStroke.erase)}
   strokes.push(curStroke);curStroke=null;
 }
 function undoStroke(){strokes.pop();redraw()}
 function clearCanvas(){strokes=[];curStroke=null;redraw()}
 function toggleEraser(){eraseMode=!eraseMode;$("#wEraser").classList.toggle("on",eraseMode)}
+function applyPenStyle(){const f=state.settings.penStyle==="fountain";
+  $("#penTglText").textContent=f?"✒️ 만년필":"🖊️ 펜";$("#penTgl").classList.toggle("fountain",f)}
+function cyclePenStyle(){state.settings.penStyle=(state.settings.penStyle==="fountain")?"pen":"fountain";
+  save();applyPenStyle();toast(state.settings.penStyle==="fountain"?"만년필 — 필압에 따라 굵기 변화":"펜 — 일정한 굵기")}
 function toggleFinger(){fingerDraw=!fingerDraw;$("#wFinger").classList.toggle("on",fingerDraw);
   toast(fingerDraw?"손가락으로 쓸 수 있어요 (펜이 있으면 끄세요)":"손가락 쓰기를 껐어요 — 펜으로 쓰세요")}
 
@@ -757,6 +785,7 @@ $("#readNext").onclick=$("#readNext2").onclick=()=>go("#/read/"+(curDay+1));
 $("#readWrite").onclick=()=>go("#/write/"+curDay);
 $("#writeBack").onclick=()=>go("#/read/"+wDay);
 $("#traceTgl").onclick=toggleTrace;
+$("#penTgl").onclick=cyclePenStyle;
 $("#writePrev").onclick=()=>pageGo(wPageIdx-1);
 $("#writeNext").onclick=()=>pageGo(wPageIdx+1);
 $("#wEraser").onclick=toggleEraser;
@@ -773,6 +802,7 @@ $("#wDone").onclick=markWritten;
   const area=$("#writeArea");
   c.addEventListener("touchmove",noScroll,{passive:false});
   if(area)area.addEventListener("touchmove",noScroll,{passive:false});
+  c.addEventListener("contextmenu",e=>e.preventDefault()); // S펜 버튼 컨텍스트메뉴 방지
   let rt;window.addEventListener("resize",()=>{clearTimeout(rt);
     rt=setTimeout(()=>{if(!document.body.classList.contains("mode-write"))return;
       const a=$("#writeArea");const w=(a&&a.clientWidth)||0;
