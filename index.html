@@ -42,6 +42,9 @@ header{position:sticky;top:0;z-index:30;background:rgba(251,247,239,.94);backdro
 main{max-width:var(--maxw);margin:0 auto;padding:14px 14px 90px}
 
 /* 플랜 칩 */
+.tabtoggle{display:flex;gap:6px;background:var(--panel);border:1.5px solid var(--line2);border-radius:13px;padding:4px;margin:4px 0 12px}
+.tabtoggle button{flex:1;padding:10px;border-radius:10px;border:0;background:transparent;font-weight:800;font-size:.96rem;color:var(--muted)}
+.tabtoggle button.on{background:var(--gold);color:#fff}
 .chips{display:flex;gap:8px;margin:4px 0 14px;flex-wrap:wrap}
 .chip{padding:9px 15px;border-radius:999px;border:1.5px solid var(--line2);background:var(--panel);
   font-weight:700;font-size:.95rem;color:var(--muted)}
@@ -86,6 +89,12 @@ main{max-width:var(--maxw);margin:0 auto;padding:14px 14px 90px}
 @keyframes stamp{0%{transform:rotate(-13deg) scale(2.4);opacity:0}55%{opacity:1}100%{transform:rotate(-13deg) scale(1);opacity:.92}}
 .cell.next{border-color:var(--accent);border-width:2.5px;color:var(--accent);box-shadow:0 0 0 3px rgba(63,125,134,.14);animation:pulse 1.8s infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(63,125,134,.12)}50%{box-shadow:0 0 0 5px rgba(63,125,134,.05)}}
+/* 필사표 셀: 일부 필사 / 완전 필사 */
+.cell.wpart{background:#f7eed9;border-color:var(--read);color:var(--gold-soft)}
+.cell.wpart::before{content:"✍";position:absolute;right:3px;bottom:1px;font-size:.62rem;opacity:.95;color:var(--gold)}
+.cell.wfull{background:var(--read-bg);border-color:var(--gold);color:var(--gold)}
+.cell.wfull::after{content:"✍";position:absolute;inset:11%;display:grid;place-items:center;border:2.5px solid var(--gold);
+  border-radius:50%;color:var(--gold);font-weight:900;font-size:1.05rem;transform:rotate(-11deg);opacity:.95}
 
 /* 읽기 화면 */
 #view-read,#view-write,#view-settings{display:none}
@@ -235,8 +244,12 @@ textarea{width:100%;min-height:84px;border:1.5px solid var(--line2);border-radiu
 </header>
 
 <main>
-  <!-- 통독표 -->
+  <!-- 통독표 / 필사표 -->
   <section id="view-table">
+    <div class="tabtoggle" id="tableTabs">
+      <button data-tab="read" class="on">📖 통독표</button>
+      <button data-tab="write">✍️ 필사표</button>
+    </div>
     <div class="chips" id="planChips"></div>
     <button class="cta" id="nextCta">
       <span class="lab"><small id="ctaSmall">다음 읽을 말씀</small><b id="ctaBig">1회차</b></span>
@@ -245,7 +258,7 @@ textarea{width:100%;min-height:84px;border:1.5px solid var(--line2);border-radiu
     <div class="card">
       <div class="prog-top"><b id="progNum">0 / 365</b><span class="pct" id="progPct">0%</span></div>
       <div class="bar"><i id="progBar" style="width:0%"></i></div>
-      <div class="dates">
+      <div class="dates" id="tblDates">
         <span>시작 <b id="dStart">–</b></span>
         <span>목표 완독 <b id="dTarget">–</b></span>
         <span>남은 회차 <b id="dLeft">–</b></span>
@@ -253,7 +266,7 @@ textarea{width:100%;min-height:84px;border:1.5px solid var(--line2);border-radiu
     </div>
     <div class="gridhead">
       <h2 id="gridTitle">통독표</h2>
-      <div class="legend"><span><i style="background:var(--read-bg);border:1.5px solid var(--read)"></i>읽음</span><span><i style="border:2px solid var(--accent)"></i>다음</span></div>
+      <div class="legend" id="gridLegend"><span><i style="background:var(--read-bg);border:1.5px solid var(--read)"></i>읽음</span><span><i style="border:2px solid var(--accent)"></i>다음</span></div>
     </div>
     <div class="grid" id="grid"></div>
   </section>
@@ -427,10 +440,14 @@ function loadState(){let s;try{s=JSON.parse(Store.get(KEY))}catch(e){}
   if(typeof s.settings.fontScale!=="number")s.settings.fontScale=1;
   if(typeof s.settings.traceGuide!=="boolean")s.settings.traceGuide=true;
   if(s.settings.penStyle!=="pen"&&s.settings.penStyle!=="fountain")s.settings.penStyle="pen";
+  if(s.settings.tableTab!=="read"&&s.settings.tableTab!=="write")s.settings.tableTab="read"; // 통독표/필사표 탭
   if(!s.progress)s.progress=blankProgress();
   for(const n of PLANS){if(!s.progress[String(n)])s.progress[String(n)]={read:{},startedAt:""};
     if(!s.progress[String(n)].read)s.progress[String(n)].read={}}
   if(!s.write||typeof s.write!=="object")s.write={}; // 필사한 절 {"nr:ch:v":"날짜"} (플랜 무관 전역)
+  if(!s.writeStat||typeof s.writeStat!=="object")s.writeStat={}; // 회차별 필사 진척 {plan:{day:{w,t}}}(필사표용)
+  for(const n of PLANS)if(!s.writeStat[String(n)]||typeof s.writeStat[String(n)]!=="object")s.writeStat[String(n)]={};
+  if(typeof s.lastWrite!=="object")s.lastWrite=null; // 마지막 필사 위치 {plan,day,idx}('이어서 필사하기')
   return s}
 let state=loadState();
 let justStamped=null; // 방금 읽음 처리한 회차(통독표에서 도장 팝 애니메이션용)
@@ -466,35 +483,60 @@ window.addEventListener("hashchange",route);
 
 /* ───────── 통독표 렌더 ───────── */
 async function renderTable(){
-  const n=state.activePlan;
-  // 칩
+  const n=state.activePlan;const tab=(state.settings.tableTab==="write")?"write":"read";
+  $$("#tableTabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));
+  // 칩(공통)
   const chips=$("#planChips");chips.innerHTML="";
   for(const p of PLANS){const b=document.createElement("button");
     b.className="chip"+(p===n?" on":"");b.textContent=p+"일";
     b.onclick=()=>{state.activePlan=p;save();renderTable()};chips.appendChild(b)}
   let plan;try{plan=await getPlan(n)}catch(e){toast("플랜을 불러오지 못했어요");return}
-  const total=plan.readings.length, done=readCount(), pct=Math.round(done/total*100);
-  const nx=nextUnread(plan);
+  const total=plan.readings.length;
+  const cta=$("#nextCta"),grid=$("#grid");grid.innerHTML="";
+  const segLabel=d=>plan.readings[d-1].segments.map(s=>s.label).join(" / ");
+
+  if(tab==="write"){ // ───────── 필사표 ─────────
+    const ws=state.writeStat[String(n)]||{};
+    const isFull=d=>{const x=ws[d];return !!(x&&x.t&&x.w>=x.t)};
+    const isPart=d=>{const x=ws[d];return !!(x&&x.w>0&&!(x.t&&x.w>=x.t))};
+    let full=0;for(let d=1;d<=total;d++)if(isFull(d))full++;
+    const pct=Math.round(full/total*100);
+    $("#progNum").textContent=full+" / "+total+" 회차";
+    $("#progPct").textContent=pct+"%";$("#progBar").style.width=pct+"%";
+    $("#gridTitle").textContent=n+"일 필사표";$("#tblDates").style.display="none";
+    $("#gridLegend").innerHTML='<span><i style="background:var(--read-bg);border:1.5px solid var(--gold)"></i>필사함</span><span><i style="background:#f7eed9;border:1.5px solid var(--read)"></i>일부</span>';
+    // CTA = 이어서 필사하기(마지막 위치, 그 회차 미완일 때) / 아니면 첫 미완료 회차
+    const lw=state.lastWrite;let rd=1,ri=null;
+    const resuming=!!(lw&&lw.plan===n&&lw.day>=1&&lw.day<=total&&!isFull(lw.day));
+    if(resuming){rd=lw.day;ri=lw.idx}
+    else{for(let d=1;d<=total;d++)if(!isFull(d)){rd=d;break}}
+    cta.classList.remove("done");
+    $("#ctaSmall").textContent=resuming?"이어서 필사하기":(full?"다음 필사할 회차":"필사 시작");
+    $("#ctaBig").textContent="✍️ "+rd+"회차 · "+segLabel(rd).slice(0,34);
+    cta.onclick=()=>go("#/write/"+rd+(ri!=null?"/"+ri:""));
+    for(let d=1;d<=total;d++){const c=document.createElement("button");
+      c.className="cell"+(isFull(d)?" wfull":isPart(d)?" wpart":"")+(d===rd?" next":"");c.textContent=d;
+      c.onclick=()=>go("#/write/"+d);grid.appendChild(c)}
+    justStamped=null;return;
+  }
+
+  // ───────── 통독표(기존) ─────────
+  const done=readCount(), pct=Math.round(done/total*100), nx=nextUnread(plan);
   $("#progNum").textContent=done+" / "+total;
-  $("#progPct").textContent=pct+"%";
-  $("#progBar").style.width=pct+"%";
-  $("#gridTitle").textContent=n+"일 통독표";
-  // 날짜
+  $("#progPct").textContent=pct+"%";$("#progBar").style.width=pct+"%";
+  $("#gridTitle").textContent=n+"일 통독표";$("#tblDates").style.display="";
+  $("#gridLegend").innerHTML='<span><i style="background:var(--read-bg);border:1.5px solid var(--read)"></i>읽음</span><span><i style="border:2px solid var(--accent)"></i>다음</span>';
   const started=curProg().startedAt;
   $("#dStart").textContent=fmtDate(started);
   if(started){const sd=new Date(started);sd.setDate(sd.getDate()+total-1);
     $("#dTarget").textContent=(sd.getMonth()+1)+"/"+sd.getDate();}
   else $("#dTarget").textContent="–";
   $("#dLeft").textContent=(total-done)+"회차";
-  // CTA
-  const cta=$("#nextCta");
   if(nx){cta.classList.remove("done");$("#ctaSmall").textContent=done?"이어서 읽기":"오늘부터 시작";
-    $("#ctaBig").textContent=nx+"회차 · "+plan.readings[nx-1].segments.map(s=>s.label).join(" / ").slice(0,40);
+    $("#ctaBig").textContent=nx+"회차 · "+segLabel(nx).slice(0,40);
     cta.onclick=()=>go("#/read/"+nx)}
   else{cta.classList.add("done");$("#ctaSmall").textContent="🎉 완독!";
     $("#ctaBig").textContent="다시 읽거나 다른 플랜 선택";cta.onclick=()=>go("#/read/1")}
-  // 그리드
-  const grid=$("#grid");grid.innerHTML="";
   const read=curProg().read;
   // 필사 흔적: 절key("nr:ch:v")에서 "nr:ch"만 모아 회차의 장과 대조(권 본문 로드 불필요)
   const wroteCh=new Set(Object.keys(state.write).map(k=>k.split(":").slice(0,2).join(":")));
@@ -582,6 +624,14 @@ function flattenDay(plan,day,books){
         ch,v:v.v,vl:v.vl,t:v.t,key:vkey(seg.nr,ch,v.v)})}}
   return out}
 function dayWroteCount(verses){let c=0;for(const x of verses)if(state.write[x.key])c++;return c}
+/* 필사표/이어서: 현재 회차의 필사 진척과 '마지막 필사 위치'를 기록 */
+function recordWriteStat(){
+  if(!wVerses.length)return;const pk=String(state.activePlan);
+  if(!state.writeStat[pk])state.writeStat[pk]={};
+  state.writeStat[pk][wDay]={w:dayWroteCount(wVerses),t:wVerses.length};
+  state.lastWrite={plan:state.activePlan,day:wDay,idx:wStartV};
+  save();
+}
 
 let wDay=1,wVerses=[],wPages=[],wPageIdx=0,wStartV=0,wDrawReady=false,wLastW=0;
 let wCurPageId="",wCurStartKey="",wLoadSeq=0,strokesDirty=false,saveTimer=null; // 필사 영속화/이어쓰기
@@ -646,6 +696,7 @@ function loadWritePage(){
   $("#writePrev").disabled=(wPageIdx<=0);
   $("#writeNext").disabled=(wPageIdx>=wPages.length-1);
   wCurStartKey=wVerses[s].key;wCurPageId=state.activePlan+"|"+wDay+"|"+wCurStartKey;
+  recordWriteStat(); // 회차 진척·마지막 위치 기록(필사표·이어서 필사하기용)
   applyTraceMode();applyPenStyle();
   strokes=[];curStroke=null;strokesDirty=false;
   const token=++wLoadSeq;
@@ -673,6 +724,7 @@ function markWritten(){
   for(let i=s;i<e;i++)if(!state.write[wVerses[i].key]){state.write[wVerses[i].key]=t;added++}
   if(added)save();
   flushSave(); // 완료한 쪽 글씨도 즉시 보존
+  recordWriteStat(); // 필사표 진척 갱신
   let nx=-1;
   for(let p=wPageIdx+1;p<wPages.length;p++)if(pageHasUnwritten(p)){nx=p;break}
   if(nx<0)for(let p=0;p<wPageIdx;p++)if(pageHasUnwritten(p)){nx=p;break}
@@ -689,6 +741,7 @@ const canvasEl=()=>$("#writeCanvas");
 const raf=f=>(typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16));
 let wctx=null,strokes=[],curStroke=null,eraseMode=false,erasing=false,fingerDraw=false,penSeen=false,wRect=null,wDPR=1;
 const PEN_W=2.3,FN_W=2.7,ERASE_R=15; // 펜=일정 굵기 / 만년필=필압 가변 / ERASE_R=획 지우개 반경(px)
+const COVER_LINE=0.4,COVER_PAGE=0.85; // 완료 판정: 한 줄을 가로질러 40%+ 쓰면 '쓴 줄', 쪽의 85%+ 줄을 쓰면 '필사 완료'(↑=더 깐깐)
 function sizeCanvas(){
   const c=canvasEl();if(!c)return;wctx=(c.getContext&&c.getContext("2d"))||null;
   if(!wctx){wDrawReady=false;return}
@@ -833,7 +886,7 @@ function pageCoverage(){
   }
   if(!lines.length)return{done:true,frac:1,unmeasured:true}; // 측정 불가(레이아웃 없음/jsdom) → 막지 않음
   const frac=coverageFrac(lines,strokes);
-  return{frac,done:frac>=0.7}; // 줄의 70% 이상을 가로질러 썼으면 '이 쪽 필사 완료'
+  return{frac,done:frac>=COVER_PAGE}; // 쪽의 대부분 줄을 가로질러 썼으면 '이 쪽 필사 완료'
 }
 /* 순수 함수: 줄 사각형들과 획들 → '쓴 줄' 비율(0~1). 테스트 가능하게 분리 */
 function coverageFrac(lines,strokeList){
@@ -846,7 +899,7 @@ function coverageFrac(lines,strokeList){
         let k=Math.floor((pt.x-ln.x)/ln.w*cols);if(k<0)k=0;if(k>=cols)k=cols-1;hit[k]=1}
     }
     let n=0;for(let i=0;i<cols;i++)n+=hit[i];
-    if(n/cols>=0.3)covered++; // 그 줄을 가로질러 ~1/3 이상 썼으면 '쓴 줄'
+    if(n/cols>=COVER_LINE)covered++; // 그 줄을 가로질러 충분히 썼으면 '쓴 줄'
   }
   return covered/lines.length;
 }
@@ -945,6 +998,8 @@ let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add
 /* ───────── 이벤트 ───────── */
 $("#brandHome").onclick=()=>go("#/table");
 $("#navTable").onclick=()=>go("#/table");
+$("#tableTabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;
+  state.settings.tableTab=b.dataset.tab;save();renderTable()};
 $("#navSettings").onclick=()=>go("#/settings");
 $("#readBack").onclick=()=>go("#/table");
 $("#readDone").onclick=toggleDone;
