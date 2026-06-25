@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#7a5a36" />
+<title>통독 — 설치 방법</title>
+<style>
+:root{ --bg:#fbf7ef; --panel:#fffdf8; --ink:#2c2a27; --muted:#8a8070; --line:#e7ddc9;
+  --gold:#7a5a36; --gold-soft:#b89160; --accent:#3f7d86; --good:#2f8f6a; --stamp:#c0392b; }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  line-height:1.65;padding:env(safe-area-inset-top) 0 40px}
+.wrap{max-width:680px;margin:0 auto;padding:22px 16px}
+.hero{text-align:center;padding:14px 0 6px}
+.hero img{width:78px;height:78px;border-radius:20px;box-shadow:0 8px 22px -10px rgba(80,60,30,.5)}
+.hero h1{margin:14px 0 4px;font-size:1.5rem;color:var(--gold);letter-spacing:-.01em}
+.hero p{margin:0;color:var(--muted);font-size:.96rem}
+.cta{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;
+  background:linear-gradient(135deg,#5e7f86,#3f7d86);color:#fff;font-weight:800;font-size:1.12rem;
+  border-radius:16px;padding:16px;margin:18px 0 8px;box-shadow:0 10px 22px -10px rgba(63,125,134,.7)}
+.urlbox{text-align:center;font-size:.86rem;color:var(--muted);word-break:break-all;margin-bottom:22px}
+.urlbox b{color:var(--gold)}
+.lead{background:#f3e7cf;border:1px solid var(--line);border-radius:14px;padding:13px 15px;font-size:.92rem;margin-bottom:22px}
+.lead b{color:var(--gold)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px 18px 8px;margin-bottom:16px;
+  box-shadow:0 1px 0 #fff inset,0 6px 18px -15px rgba(80,60,30,.45)}
+.card h2{margin:0 0 4px;font-size:1.18rem;display:flex;align-items:center;gap:9px}
+.card h2 .ic{font-size:1.4rem}
+.card .sub{color:var(--muted);font-size:.82rem;margin:0 0 14px}
+ol.steps{list-style:none;counter-reset:s;margin:0;padding:0}
+ol.steps li{counter-increment:s;position:relative;padding:0 0 14px 42px;min-height:30px}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:-2px;width:30px;height:30px;border-radius:50%;
+  background:var(--gold);color:#fff;font-weight:800;display:grid;place-items:center;font-size:.95rem}
+ol.steps li::after{content:"";position:absolute;left:14.5px;top:30px;bottom:2px;width:2px;background:var(--line)}
+ol.steps li:last-child{padding-bottom:6px}
+ol.steps li:last-child::after{display:none}
+.k{display:inline-block;background:#f3e7cf;border:1px solid #e3d4b4;border-radius:7px;padding:1px 8px;font-weight:700;
+  font-size:.92em;color:var(--gold);white-space:nowrap}
+.tip{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;
+  padding:13px 15px;margin-bottom:13px}
+.tip h3{margin:0 0 5px;font-size:1rem}
+.tip p{margin:0;font-size:.9rem;color:#5c554a}
+.stamp{display:inline-grid;place-items:center;width:22px;height:22px;border:2px solid var(--stamp);border-radius:50%;
+  color:var(--stamp);font-weight:900;font-size:.8rem;transform:rotate(-12deg);vertical-align:-5px}
+.foot{text-align:center;color:var(--muted);font-size:.78rem;margin-top:24px;line-height:1.6}
+.foot b{color:var(--gold)}
+@media print{.cta{box-shadow:none}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <img src="./icon-192.png" alt="통독 아이콘" onerror="this.style.display='none'"/>
+    <h1>📖 통독 — 설치 방법</h1>
+    <p>성경을 통큰통독 순서로 읽고 통독표에 체크하는 앱</p>
+  </div>
+
+  <a class="cta" href="./index.html">📖 통독 앱 열기 →</a>
+  <div class="urlbox">앱 주소: <b>hyessung0806.github.io/tongdok-bible</b><br>이 주소를 가족과 공유하세요</div>
+
+  <div class="lead">
+    <b>설치하면 좋은 점</b> — 홈 화면 아이콘으로 전체화면 실행, 더 빠르고, 진도가 안전하게 보관됩니다.
+    아래에서 <b>내 기기</b>를 찾아 따라 하세요. (1~2분이면 끝나요)
+  </div>
+
+  <!-- 아이폰 -->
+  <div class="card">
+    <h2><span class="ic">📱</span> 아이폰 (iPhone)</h2>
+    <p class="sub">반드시 <b>Safari(사파리)</b>로 여세요 — 크롬 앱으로는 설치가 안 됩니다.</p>
+    <ol class="steps">
+      <li><b>Safari</b>로 위 <span class="k">앱 열기</span> 또는 앱 주소로 접속합니다.</li>
+      <li>화면 <b>아래쪽 가운데</b>의 <span class="k">공유 ⬆️</span> 버튼을 누릅니다.</li>
+      <li>목록을 아래로 내려 <span class="k">홈 화면에 추가</span>를 누릅니다.</li>
+      <li>오른쪽 위 <span class="k">추가</span>를 누르면 끝! 홈 화면의 <b>통독</b> 아이콘으로 실행하세요.</li>
+    </ol>
+  </div>
+
+  <!-- 아이패드 -->
+  <div class="card">
+    <h2><span class="ic">📲</span> 아이패드 (iPad)</h2>
+    <p class="sub">아이폰과 같지만 <b>공유 버튼이 화면 오른쪽 위</b>에 있어요. (Safari로 열기)</p>
+    <ol class="steps">
+      <li><b>Safari</b>로 앱 주소에 접속합니다.</li>
+      <li>화면 <b>오른쪽 위</b>의 <span class="k">공유 ⬆️</span> 버튼을 누릅니다.</li>
+      <li><span class="k">홈 화면에 추가</span>를 누릅니다.</li>
+      <li>오른쪽 위 <span class="k">추가</span> → 홈 화면 <b>통독</b> 아이콘으로 실행.</li>
+    </ol>
+  </div>
+
+  <!-- 안드로이드폰 -->
+  <div class="card">
+    <h2><span class="ic">🤖</span> 안드로이드 폰</h2>
+    <p class="sub"><b>Chrome(크롬)</b> 또는 삼성 인터넷으로 여세요.</p>
+    <ol class="steps">
+      <li><b>Chrome</b>으로 위 <span class="k">앱 열기</span> 또는 앱 주소로 접속합니다.</li>
+      <li>아래에 뜨는 <span class="k">홈 화면에 추가 / 설치</span> 배너를 누릅니다.</li>
+      <li>배너가 없으면 오른쪽 위 <span class="k">⋮ 메뉴</span> → <span class="k">앱 설치</span>(또는 홈 화면에 추가).</li>
+      <li>한 번 더 <span class="k">설치/추가</span> → 홈 화면 <b>통독</b> 아이콘으로 실행.</li>
+    </ol>
+  </div>
+
+  <!-- 갤럭시탭 -->
+  <div class="card">
+    <h2><span class="ic">🖥️</span> 갤럭시탭</h2>
+    <p class="sub">안드로이드 폰과 같아요. <b>삼성 인터넷</b> 또는 Chrome으로.</p>
+    <ol class="steps">
+      <li><b>삼성 인터넷</b>(또는 Chrome)으로 앱 주소에 접속합니다.</li>
+      <li>삼성 인터넷: 아래 <span class="k">≡ 메뉴</span> → <span class="k">현재 페이지 추가</span> → <span class="k">홈 화면</span>.</li>
+      <li>Chrome: <span class="k">⋮ 메뉴</span> → <span class="k">앱 설치</span> / 홈 화면에 추가.</li>
+      <li>홈 화면의 <b>통독</b> 아이콘으로 실행. (가로/세로 모두 보기 편해요)</li>
+    </ol>
+  </div>
+
+  <h2 style="margin:26px 2px 12px;font-size:1.15rem;color:var(--gold)">설치 후 알아두면 좋아요</h2>
+
+  <div class="tip">
+    <h3>📵 인터넷 없이 읽기 (지하철·비행기)</h3>
+    <p>설치 후 <b>설정 ⚙️ → "전체 본문 받기"</b>를 한 번 누르면 성경 66권을 미리 받아, 인터넷이 없어도 모든 회차를 읽을 수 있어요. (와이파이에서 1회 권장)</p>
+  </div>
+  <div class="tip">
+    <h3>🔁 부부·기기끼리 진도 맞추기</h3>
+    <p>진도는 기기마다 따로 저장돼요. 옮기려면 <b>설정 → "진도 내보내기"</b>로 코드를 복사(또는 파일 저장)해서, 다른 기기 <b>"진도 가져오기"</b>에 붙여넣으면 됩니다. (읽은 회차가 합쳐져요)</p>
+  </div>
+  <div class="tip">
+    <h3><span class="stamp">✓</span> 읽음 체크 &amp; 자동 업데이트</h3>
+    <p>그날 말씀을 읽고 <b>"읽음 완료"</b>를 누르면 통독표에 <b>도장</b>이 찍히고 다음 회차로 넘어가요. 앱은 온라인으로 다시 열 때 <b>자동 업데이트</b>됩니다(재설치 불필요).</p>
+  </div>
+
+  <p class="foot">
+    본문: <b>개역개정</b>(대한성서공회 저작권) — 개인·가정용. 읽기 순서: <b>통큰통독</b> 역사순 재구성.<br>
+    이 주소는 가족용입니다. 외부에 널리 공유하지 말아 주세요.
+  </p>
+
+</div>
+</body>
+</html>
