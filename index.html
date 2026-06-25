@@ -137,14 +137,17 @@ body:not(.mode-read) .donebar{display:none}
 .writepager button:disabled{opacity:.32}
 .writepager .pos{min-width:128px;text-align:center;font-weight:800;color:var(--ink);font-size:1.04rem}
 .writepager .pos small{display:block;color:var(--muted);font-size:.72rem;font-weight:600;margin-top:1px}
-.writeref{background:var(--read-bg);border-radius:12px;padding:12px 14px;margin-bottom:10px;
-  font-size:1.04rem;line-height:1.62;color:var(--ink)}
-.writeref .rn{font-size:.72em;font-weight:800;color:var(--gold-soft);vertical-align:.32em;margin-right:4px}
+.writeref{background:var(--read-bg);border-radius:12px;padding:10px 14px;margin-bottom:10px;
+  font-size:1.0rem;line-height:1.6;color:var(--ink);max-height:34vh;overflow:auto}
+.writeref .rn{font-size:.72em;font-weight:800;color:var(--gold-soft);vertical-align:.32em;margin-right:3px}
+.writeref .rchap{font-weight:800;color:var(--gold);font-size:.92em;margin:9px 0 3px}
+.writeref .rchap:first-child{margin-top:0}
 .writearea{position:relative;border:1.5px solid var(--line2);border-radius:16px;overflow:hidden;background:var(--panel);
-  height:clamp(300px,54vh,620px);touch-action:pan-y;-webkit-user-select:none;user-select:none;
+  height:clamp(320px,58vh,720px);touch-action:pan-y;-webkit-user-select:none;user-select:none;
   background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 47px,var(--read-bg) 47px,var(--read-bg) 48px)}
-.guide{position:absolute;inset:0;padding:0 18px;font-size:1.5rem;line-height:48px;color:rgba(44,42,39,.17);
-  font-weight:600;letter-spacing:.01em;pointer-events:none;overflow:hidden;white-space:pre-wrap;word-break:keep-all}
+.guide{position:absolute;inset:0;padding:0 18px;font-size:1.5rem;line-height:48px;color:rgba(44,42,39,.18);
+  font-weight:600;letter-spacing:.01em;pointer-events:none;overflow:hidden;white-space:normal;word-break:keep-all}
+.guide sup{font-size:.5em;font-weight:800;vertical-align:.5em;margin:0 2px 0 1px;opacity:.85}
 .writearea.blank .guide{display:none}
 #writeCanvas{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y}
 .writehint{text-align:center;color:var(--muted);font-size:.78rem;margin:9px 0 0;line-height:1.7}
@@ -201,10 +204,12 @@ textarea{width:100%;min-height:84px;border:1.5px solid var(--line2);border-radiu
   background-size:200% 100%;animation:sh 1.2s infinite;border-radius:6px;margin:10px 0}
 @keyframes sh{to{background-position:-200% 0}}
 
-@media(min-width:680px){ :root{--grid-min:54px;--fs:1.12rem} .readsheet{padding:30px 34px 34px}
-  .writearea{height:clamp(440px,64vh,860px)} .guide{font-size:1.7rem;line-height:54px}
+@media(min-width:680px){ :root{--grid-min:54px;--fs:1.12rem}
+  .readsheet{padding:30px 34px 34px;max-width:840px;margin-left:auto;margin-right:auto}
+  .writearea{height:clamp(460px,66vh,900px)} .guide{font-size:1.7rem;line-height:54px}
   .writearea{background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 53px,var(--read-bg) 53px,var(--read-bg) 54px)} }
-@media(min-width:980px){ :root{--maxw:860px;--grid-min:60px} }
+@media(min-width:980px){ :root{--maxw:1000px;--grid-min:60px} }
+@media(min-width:1200px){ :root{--maxw:1120px} }
 </style>
 </head>
 <body>
@@ -526,7 +531,7 @@ function flattenDay(plan,day,books){
   return out}
 function dayWroteCount(verses){let c=0;for(const x of verses)if(state.write[x.key])c++;return c}
 
-let wDay=1,wIdx=0,wVerses=[],wDrawReady=false;
+let wDay=1,wVerses=[],wPages=[],wPageIdx=0,wStartV=0,wDrawReady=false,wLastW=0;
 async function renderWrite(day,idx){
   const n=state.activePlan;let plan;
   try{plan=await getPlan(n)}catch(e){toast("플랜 로딩 실패");return}
@@ -537,27 +542,58 @@ async function renderWrite(day,idx){
   catch(e){toast("본문을 불러오지 못했어요");go("#/read/"+day);return}
   wDay=day;wVerses=flattenDay(plan,day,books);
   if(!wVerses.length){toast("이 회차에 필사할 절이 없어요");go("#/read/"+day);return}
-  let start;
-  if(idx===null||idx===undefined){start=wVerses.findIndex(x=>!state.write[x.key]);if(start<0)start=0}
-  else start=idx;
-  wIdx=Math.max(0,Math.min(wVerses.length-1,start));
+  if(idx===null||idx===undefined){const u=wVerses.findIndex(x=>!state.write[x.key]);wStartV=u<0?0:u}
+  else wStartV=Math.max(0,Math.min(wVerses.length-1,idx));
   $("#writeLab").textContent=day+"회차 필사";
-  loadWriteVerse();
+  raf(()=>relayout(true));
 }
-function loadWriteVerse(){
-  const ve=wVerses[wIdx];if(!ve)return;const num=ve.vl||ve.v;
-  const ref=ve.name+" "+ve.ch+(ve.isPsalm?"편":"장")+" "+num+"절";
-  $("#writePos").textContent=(wIdx+1)+" / "+wVerses.length+"절";
-  $("#writeWrote").textContent=dayWroteCount(wVerses)+"개 완료";
-  $("#writeGuide").textContent=ve.t;
-  $("#writeRef").innerHTML='<span class="rn">'+esc(ref)+'</span>'+esc(ve.t);
-  const done=!!state.write[ve.key];
-  const wd=$("#wDone");wd.textContent=done?"✓ 필사함 · 다음 절 →":"✍️ 필사 완료";wd.classList.toggle("done",done);
-  $("#writePrev").disabled=(wIdx<=0);
-  $("#writeNext").disabled=(wIdx>=wVerses.length-1);
-  applyTraceMode();
-  clearStrokes();
-  raf(sizeCanvas);
+/* 쓰기 영역 크기에 맞춰 '화면을 채우는 만큼' 절을 한 쪽으로 묶음 */
+function pageTargetChars(){
+  const a=$("#writeArea");const h=(a&&a.clientHeight)||520,w=(a&&a.clientWidth)||340;
+  const big=w>=680;const lh=big?54:48,fs=(big?1.7:1.5)*16;
+  const lines=Math.max(3,Math.floor(h/lh));
+  const perLine=Math.max(6,Math.floor((w-40)/(fs*0.96)));
+  return Math.max(60,Math.floor(lines*perLine*0.9));
+}
+function layoutPages(){
+  const target=pageTargetChars();const pages=[];let i=0;
+  while(i<wVerses.length){let len=0,e=i;
+    while(e<wVerses.length){const vlen=(wVerses[e].t||"").length+3;
+      if(e>i&&len+vlen>target)break;len+=vlen;e++}
+    e=Math.max(e,i+1);pages.push([i,e]);i=e}
+  wPages=pages;
+}
+function pageOf(vi){for(let p=0;p<wPages.length;p++)if(vi>=wPages[p][0]&&vi<wPages[p][1])return p;return 0}
+function relayout(keepStart){
+  if(!wVerses.length)return;
+  const anchor=keepStart?wStartV:((wPages[wPageIdx]&&wPages[wPageIdx][0])||0);
+  const a=$("#writeArea");wLastW=(a&&a.clientWidth)||0;
+  layoutPages();wPageIdx=pageOf(anchor);loadWritePage();
+}
+function pageRefLabel(s,e){
+  const a=wVerses[s],b=wVerses[e-1];const u=x=>x.vl||x.v;
+  const head=a.name+" "+a.ch+(a.isPsalm?"편":"장")+" "+u(a)+"절";
+  if(e-1===s)return head;
+  if(a.nr===b.nr&&a.ch===b.ch)return a.name+" "+a.ch+(a.isPsalm?"편":"장")+" "+u(a)+"–"+u(b)+"절";
+  return a.name+" "+a.ch+(a.isPsalm?"편":"장")+" "+u(a)+"절 – "+b.ch+(b.isPsalm?"편":"장")+" "+u(b)+"절";
+}
+function pageGuideHTML(s,e){let h="";for(let i=s;i<e;i++){const v=wVerses[i];
+  h+='<span class="gv"><sup>'+(v.vl||v.v)+'</sup>'+esc(v.t)+'</span> '}return h}
+function pageRefHTML(s,e){let h="",ln=null;for(let i=s;i<e;i++){const v=wVerses[i];const ck=v.nr+":"+v.ch;
+  if(ck!==ln){h+='<div class="rchap">'+esc(v.name)+" "+v.ch+(v.isPsalm?"편":"장")+'</div>';ln=ck}
+  h+='<span class="rn">'+(v.vl||v.v)+'</span>'+esc(v.t)+' '}return h}
+function pageHasUnwritten(p){const a=wPages[p];for(let i=a[0];i<a[1];i++)if(!state.write[wVerses[i].key])return true;return false}
+function loadWritePage(){
+  const pg=wPages[wPageIdx];if(!pg)return;const s=pg[0],e=pg[1];wStartV=s;
+  $("#writePos").textContent=pageRefLabel(s,e);
+  $("#writeWrote").textContent=(wPageIdx+1)+" / "+wPages.length+"쪽 · "+dayWroteCount(wVerses)+"/"+wVerses.length+"절";
+  $("#writeGuide").innerHTML=pageGuideHTML(s,e);
+  $("#writeRef").innerHTML=pageRefHTML(s,e);$("#writeRef").scrollTop=0;
+  const allDone=!pageHasUnwritten(wPageIdx);
+  const wd=$("#wDone");wd.textContent=allDone?"✓ 필사함 · 다음 쪽 →":"✍️ 필사 완료";wd.classList.toggle("done",allDone);
+  $("#writePrev").disabled=(wPageIdx<=0);
+  $("#writeNext").disabled=(wPageIdx>=wPages.length-1);
+  applyTraceMode();clearStrokes();raf(sizeCanvas);
 }
 function applyTraceMode(){
   const on=state.settings.traceGuide!==false;
@@ -569,22 +605,24 @@ function applyTraceMode(){
   $("#writeHint").textContent=on?"펜으로 흐린 글씨를 따라 써보세요":"위 말씀을 보고 빈 줄에 펜으로 써보세요";
 }
 function toggleTrace(){state.settings.traceGuide=!(state.settings.traceGuide!==false);save();applyTraceMode()}
-function writeGo(idx){wIdx=Math.max(0,Math.min(wVerses.length-1,idx));
-  history.replaceState(null,"","#/write/"+wDay+"/"+wIdx);loadWriteVerse()}
+function pageGo(idx){wPageIdx=Math.max(0,Math.min(wPages.length-1,idx));
+  if(wPages[wPageIdx])wStartV=wPages[wPageIdx][0];
+  history.replaceState(null,"","#/write/"+wDay+"/"+wStartV);loadWritePage()}
 
-/* 필사 완료 → 다음 미필사 절로 */
+/* 필사 완료 → 현재 쪽의 절 전부 기록 + 다음 미필사 쪽으로 */
 function markWritten(){
-  const ve=wVerses[wIdx];if(!ve)return;
-  if(!state.write[ve.key]){state.write[ve.key]=todayStr();save()}
+  const pg=wPages[wPageIdx];if(!pg)return;const s=pg[0],e=pg[1],t=todayStr();let added=0;
+  for(let i=s;i<e;i++)if(!state.write[wVerses[i].key]){state.write[wVerses[i].key]=t;added++}
+  if(added)save();
   let nx=-1;
-  for(let i=wIdx+1;i<wVerses.length;i++)if(!state.write[wVerses[i].key]){nx=i;break}
-  if(nx<0)for(let i=0;i<wIdx;i++)if(!state.write[wVerses[i].key]){nx=i;break}
+  for(let p=wPageIdx+1;p<wPages.length;p++)if(pageHasUnwritten(p)){nx=p;break}
+  if(nx<0)for(let p=0;p<wPageIdx;p++)if(pageHasUnwritten(p)){nx=p;break}
   if(nx<0){
-    loadWriteVerse();
+    loadWritePage();
     showWin("✍️",wDay+"회차 필사 끝!","이 회차의 모든 절을 손으로 옮겨 쓰셨어요. 정말 잘하셨어요!",null);
     $("#winStay").onclick=()=>{closeModal("#winModal");go("#/read/"+wDay)};
     return}
-  toast("✍️ 필사 완료!");writeGo(nx);
+  toast(added?"✍️ "+added+"절 필사 완료!":"다음 쪽으로");pageGo(nx);
 }
 
 /* 캔버스 드로잉 엔진 — 스트로크는 메모리에만, 저장하지 않음(완료 도장만) */
@@ -717,8 +755,8 @@ $("#readNext").onclick=$("#readNext2").onclick=()=>go("#/read/"+(curDay+1));
 $("#readWrite").onclick=()=>go("#/write/"+curDay);
 $("#writeBack").onclick=()=>go("#/read/"+wDay);
 $("#traceTgl").onclick=toggleTrace;
-$("#writePrev").onclick=()=>writeGo(wIdx-1);
-$("#writeNext").onclick=()=>writeGo(wIdx+1);
+$("#writePrev").onclick=()=>pageGo(wPageIdx-1);
+$("#writeNext").onclick=()=>pageGo(wPageIdx+1);
 $("#wEraser").onclick=toggleEraser;
 $("#wUndo").onclick=undoStroke;
 $("#wClear").onclick=clearCanvas;
@@ -729,7 +767,9 @@ $("#wDone").onclick=markWritten;
   c.addEventListener("pointermove",onMove,{passive:false});
   c.addEventListener("pointerup",onUp);c.addEventListener("pointercancel",onUp);
   let rt;window.addEventListener("resize",()=>{clearTimeout(rt);
-    rt=setTimeout(()=>{if(document.body.classList.contains("mode-write"))sizeCanvas()},160)});
+    rt=setTimeout(()=>{if(!document.body.classList.contains("mode-write"))return;
+      const a=$("#writeArea");const w=(a&&a.clientWidth)||0;
+      if(Math.abs(w-wLastW)>40)relayout(false);else sizeCanvas();},180)});
 })();
 $("#fontCtrl").onclick=e=>{const b=e.target.closest("button");if(!b)return;
   state.settings.fontScale=+b.dataset.f;save();applyFont();renderSettings()};
