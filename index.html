@@ -708,7 +708,8 @@ function onMove(e){
     curStroke.pts.push(pt);drawSeg(last,pt)}
 }
 function onUp(){
-  if(erasing){erasing=false;if(!eraseMode)hideEraseCursor();return}
+  hideEraseCursor(); // 펜을 떼면 지우개 원도 항상 숨김(다시 대면 onMove가 표시)
+  if(erasing){erasing=false;return}
   if(!curStroke)return;
   strokes.push(curStroke);curStroke=null;
 }
@@ -813,7 +814,8 @@ $("#wDone").onclick=markWritten;
   c.addEventListener("pointerup",onUp);c.addEventListener("pointercancel",onUp);
   const ec=$("#eraseCursor");if(ec)ec.style.width=ec.style.height=(2*ERASE_R)+"px"; // 지우개 원 크기=실제 반경
   c.addEventListener("pointerenter",()=>{wRect=canvasEl().getBoundingClientRect()});
-  c.addEventListener("pointerleave",hideEraseCursor);
+  c.addEventListener("pointerleave",hideEraseCursor); // 펜이 영역 밖으로/hover 끝
+  c.addEventListener("pointerout",hideEraseCursor);   // 펜을 화면에서 들어올릴 때(hover 종료)
   // iOS: 펜·손바닥이 닿아도 화면이 스크롤되지 않도록(touch-action:none 보강) — 그리는 손가락 입력은 포인터 이벤트라 그대로 동작
   const noScroll=e=>{e.preventDefault()};
   const area=$("#writeArea");
