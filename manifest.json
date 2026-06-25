@@ -1,0 +1,17 @@
+{
+  "name": "통독 — 통큰통독 성경 일독",
+  "short_name": "통독",
+  "description": "통큰통독 역사순 순서로 성경을 90·180·300·365일에 읽고 통독표에 체크하는 앱. 개역개정 본문을 앱에서 바로 읽어요.",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fbf7ef",
+  "theme_color": "#7a5a36",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
