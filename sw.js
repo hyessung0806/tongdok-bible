@@ -3,7 +3,7 @@
    ② 같은 도메인 정적(plan·book-meta·아이콘·본문 data/bible) = 캐시 우선 + 받으면 캐시(오프라인 영구)
    ③ 그 외 = 네트워크
    ※ sw.js 자체나 PRECACHE 목록을 바꿀 때만 버전(tongdok-vN)을 올린다. */
-const CACHE = "tongdok-v2";
+const CACHE = "tongdok-v3";
 const PRECACHE = [
   "./", "./index.html", "./manifest.json",
   "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png",
