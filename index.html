@@ -630,7 +630,7 @@ function markWritten(){
 const canvasEl=()=>$("#writeCanvas");
 const raf=f=>(typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16));
 let wctx=null,strokes=[],curStroke=null,eraseMode=false,fingerDraw=false,penSeen=false,wRect=null,wDPR=1;
-const BASE_W=3.0,ERASE_W=26;
+const PEN_W=2.3,ERASE_W=26; // 일정한 굵기의 펜(붓펜처럼 압력에 따라 크게 변하지 않게)
 function sizeCanvas(){
   const c=canvasEl();if(!c)return;wctx=(c.getContext&&c.getContext("2d"))||null;
   if(!wctx){wDrawReady=false;return}
@@ -646,8 +646,9 @@ function clearStrokes(){strokes=[];curStroke=null;if(wctx)redraw()}
 function drawStroke(s){for(let i=1;i<s.pts.length;i++)drawSeg(s.pts[i-1],s.pts[i],s.erase)}
 function drawSeg(a,b,erase){if(!wctx)return;
   wctx.globalCompositeOperation=erase?"destination-out":"source-over";
-  wctx.strokeStyle="#23303a";wctx.lineCap="round";wctx.lineJoin="round";
-  const p=(a.p+b.p)/2;wctx.lineWidth=erase?ERASE_W:BASE_W*(0.5+1.4*p);
+  wctx.strokeStyle="#1f2730";wctx.lineCap="round";wctx.lineJoin="round";
+  // 펜: 거의 일정한 굵기(압력은 미세하게만 반영 0.9~1.1배)
+  const p=(a.p+b.p)/2;wctx.lineWidth=erase?ERASE_W:PEN_W*(0.9+0.2*p);
   wctx.beginPath();wctx.moveTo(a.x,a.y);wctx.lineTo(b.x,b.y);wctx.stroke()}
 function ptFrom(e){const r=wRect||canvasEl().getBoundingClientRect();
   let p=e.pressure;if(!p||e.pointerType!=="pen")p=0.5;
